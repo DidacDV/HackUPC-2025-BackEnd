@@ -1,0 +1,15 @@
+version: '3.9'
+
+services:
+  django:
+    build: .
+    ports:
+      - "8000:8000"
+      - "80:80"
+      - "5432:5432"
+    env_file:
+      - .env
+networks:
+  default:
+    driver: bridge
+    enable_ipv6: true
