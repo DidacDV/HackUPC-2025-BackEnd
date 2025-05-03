@@ -1,11 +1,40 @@
 id_transaccion,categoria,codigo_categoria
+txn6733837885,cajero automatico,atm001
+txn5900149149,transporte,tra003
+txn3199978512,salud,sal007
+txn2781215744,cajero automatico,atm001
+txn6076517866,salud,sal007
+txn2791085173,salud,sal007
+txn6547930130,salud,sal007
+txn8528983977,salud,sal007
 txn8617035552,transporte,tra003
-txn1939623321,entretenimiento,ent005
-txn6360370463,alimentacion,ali001
+txn6530445838,ingresos,ing001
 txn1060308648,alimentacion,ali001
+txn3961235971,cajero automatico,atm001
 txn5459468200,salud,sal007
-txn4485918757,entretenimiento,ent005
+txn5697438006,salud,sal007
+txn6591631324,alimentacion,ali001
+txn1939623321,entretenimiento,ent005
+txn7274651120,alimentacion,ali001
 txn9516873817,alimentacion,ali001
-txn7429941741,alimentacion,ali001
-txn2223906076,cajero automatico,atm001
+txn4241060792,salud,sal007
+txn7520418755,alimentacion,ali001
+txn5367880897,cajero automatico,atm001
 txn3553688457,alimentacion,ali001
+txn5466682991,alimentacion,ali001
+txn5788443644,cajero automatico,atm001
+txn7629596201,salud,sal007
+txn6360370463,alimentacion,ali001
+txn7429941741,alimentacion,ali001
+txn7165170521,salud,sal007
+txn2223906076,cajero automatico,atm001
+txn3020487407,salud,sal007
+txn4485918757,entretenimiento,ent005
+txn9687785011,salud,sal007
+txn8504635043,salud,sal007
+txn8728111668,transporte,tra003
+txn6713153566,cajero automatico,atm001
+txn1200917231,ingresos,ing001
+txn2617130936,cajero automatico,atm001
+txn2867639416,cajero automatico,atm001
+txn6756460408,cajero automatico,atm001

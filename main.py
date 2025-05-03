@@ -1,12 +1,10 @@
 import polars as pl
-import datetime as dt
 import os
 import numpy as np
 from pathlib import Path
 from unidecode import unidecode
 from sklearn.ensemble import IsolationForest
 from sklearn.preprocessing import StandardScaler
-from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 from sentence_transformers import SentenceTransformer
 import re
@@ -84,10 +82,11 @@ def Categorias(data):
                           data.with_columns([pl.col("hora_inicio_utc").dt.strftime("%Y").alias("año")]).group_by("año").agg([pl.len().alias("n_transacciones")]).sort("año")
                         )
     motivo = (data.select([pl.col("id_transaccion"), pl.col("explicacion_anomalia")]))
-    return (dinero, tipoTransaccion, categoria, mismaDivisa, infoPagador, frecuenciaTemporal, motivo)
+    motivo_cat = (data.select([pl.col("id_transaccion"), pl.col("mensaje_personalizado")]))
+    return (dinero, tipoTransaccion, categoria, mismaDivisa, infoPagador, frecuenciaTemporal, motivo, motivo_cat)
 
 def guardarEnCSV(path, tuple, nombreArchivo):
-    dinero, tipoTransaccion, categoria, mismaDivisa, infoPagador, frecuenciaTemporal, motivo = tuple
+    dinero, tipoTransaccion, categoria, mismaDivisa, infoPagador, frecuenciaTemporal, motivo, motivo_cat = tuple
 
     os.makedirs(path, exist_ok=True)
 
@@ -101,6 +100,8 @@ def guardarEnCSV(path, tuple, nombreArchivo):
     frecuenciaTemporal[1].write_csv(f"{path}/{nombreArchivo}frecuencia_mes.csv")
     frecuenciaTemporal[2].write_csv(f"{path}/{nombreArchivo}frecuencia_year.csv")
     motivo.write_csv(f"{path}/{nombreArchivo}motivo.csv")
+    motivo_cat.write_csv(f"{path}/{nombreArchivo}motivo2.csv")
+
 
 def exportarArchivos(tuple):
     current_dir = Path(__file__).parent
@@ -149,17 +150,17 @@ def IsolationAnalisis(data):
 
 def generate_anomaly_explanation(row):
     if row["anomalia_numerica"] == 0:
-        return "Transacción normal"
+        return "Normal transaction"
     
     # Cargar modelo de lenguaje (puedes usar uno más pequeño si es necesario)
     model = SentenceTransformer('paraphrase-MiniLM-L6-v2')
     
     # Crear un texto descriptivo de la transacción
     transaction_details = (
-        f"Transacción con importe original {row['importe_orig.']} y importe pagado {row['importe_pagado']}. "
-        f"Comisión: {row['comision']}, Tasa impuestos: {row['tasa_impuestos']}, "
-        f"Ingreso: {row['ingreso']}, Gasto: {row['gasto']}. "
-        f"Score de anomalía: {row['score_anomalia']:.2f}"
+        f"Transaction with original amount {row['importe_orig.']} and amount paid {row['importe_pagado']}. "
+        f"Commission: {row['comision']}, Tax rate: {row['tasa_impuestos']}, "
+        f"Income: {row['ingreso']}, Spent: {row['gasto']}. "
+        f"Anomaly score: {row['score_anomalia']:.2f}"
     )
     
     # Generar un embedding del texto
@@ -167,24 +168,24 @@ def generate_anomaly_explanation(row):
     
     # Definir posibles razones de anomalías (podrías expandir esto)
     common_reasons = [
-        "El importe pagado es significativamente diferente al importe original",
-        "La comisión es inusualmente alta para este tipo de transacción",
-        "La tasa de impuestos no coincide con los valores esperados",
-        "La relación entre ingreso y gasto es atípica",
-        "La duración de la transacción es anómala",
-        "Patrón de transacción inusual en comparación con el comportamiento histórico",
-        "El descuento aplicado es inesperadamente alto o bajo",
-        "La comisión varía drásticamente sin una explicación lógica",
-        "El importe de los impuestos es inconsistente con la tasa aplicada",
-        "Se observa un redondeo inusual en los importes o comisiones",
-        "Un ingreso o gasto es registrado fuera del rango esperado para la hora o fecha",
-        "La proporción de gasto en una transacción específica es excesivamente alta o baja en comparación con el ingreso generado",
-        "Se registran ingresos o gastos con valores idénticos de forma repetida",
-        "Transacciones con importes similares presentan duraciones extremadamente diferentes",
-        "La duración de la transacción es inusualmente corta o larga para el tipo de producto o servicio",
-        "Un aumento o disminución repentino y significativo en el valor promedio de las transacciones",
-        "Una frecuencia inusual de transacciones con valores específicos (picos o valles inesperados)",
-        "Cambios drásticos en la distribución de los valores de las columnas numéricas"
+        "The amount paid is significantly different from the original amount",
+        "The commission is unusually high for this type of transaction.",
+        "The tax rate does not match the expected values",
+        "The relationship between income and expenditure is atypical",
+        "The transaction duration is anomalous",
+        "Unusual transaction pattern compared to historical behavior",
+        "The discount applied is unexpectedly high or low",
+        "The commission varies drastically without a logical explanation",
+        "The amount of taxes is inconsistent with the rate applied",
+        "Unusual rounding is observed in the amounts or commissions",
+        "An income or expense is recorded outside the expected range for the time or date",
+        "The proportion of expenditure in a specific transaction is excessively high or low compared to the income generated",
+        "Income or expenses with identical values ​​are recorded repeatedly",
+        "Transactions with similar amounts have extremely different durations",
+        "The transaction duration is unusually short or long for the type of product or service",
+        "A sudden and significant increase or decrease in the average transaction value",
+        "An unusual frequency of transactions with specific values ​​(unexpected peaks or valleys)",
+        "Drastic changes in the distribution of values ​​in numeric columns"
     ]
     
     # Encontrar la razón más similar
@@ -195,114 +196,74 @@ def generate_anomaly_explanation(row):
     
     # Construir el mensaje final
     explanation = (
-        f"POSIBLE ANOMALÍA DETECTADA (score: {row['score_anomalia']:.2f}). "
-        f"Razón más probable: {best_match}. "
-        f"Detalles: {transaction_details}"
+        f"POSSIBLE ANOMALY DETECTED (score:{row['score_anomalia']:.2f}). "
+        f"Most likely reason: {best_match}. "
+        f"Details: {transaction_details}"
     )
     
     return explanation
 
-def evaluarSemantica(data, categorias):
-    use_embeddings = False
-    
+
+def evaluarSemantica(data: pl.DataFrame, categorias: list[str]) -> pl.DataFrame:
     try:
-        model = SentenceTransformer('paraphrase-multilingual-MiniLM-L12-v2')
-        # Alternativas ligeras:
-        # - 'paraphrase-MiniLM-L3-v2' - muy ligero (33MB)
-        # - 'distiluse-base-multilingual-cased-v1' - multilingüe
-        # - 'paraphrase-multilingual-MiniLM-L12-v2' - buen balance
-        use_embeddings = True
-        print(f"Usando modelo de embeddings: {model.get_sentence_embedding_dimension()}d")
+        embed_model = SentenceTransformer('paraphrase-MiniLM-L3-v2')  # Modelo ligero (33MB)
+        print("Modelo de embeddings cargado")
     except Exception as e:
-        print(f"No se pudo cargar modelo de embeddings: {e}")
-        print("Usando TF-IDF como alternativa...")
-        
-        vectorizer = TfidfVectorizer(
-            ngram_range=(1, 2),
-            max_features=5000,
-            stop_words=['el', 'la', 'los', 'las', 'un', 'una', 'y', 'o', 'de', 'del', 'en', 'por', 'para']
-        )
+        raise RuntimeError(f"Error cargando embeddings: {e}")
 
-    if use_embeddings:
-        category_embeddings = {
-            cat: model.encode(cat) for cat in categorias
-        }
-    else:
-        corpus = []
-        corpus_categories = []
-        
-        for row in data.rows(named=True):
-            corpus.append(row["descripcion_gasto"])
-            corpus_categories.append(row["categoria"])
-        
-        for cat in categorias:
-            corpus.append(cat)
-            corpus_categories.append(cat)
-        
-        tfidf_matrix = vectorizer.fit_transform(corpus)
+    category_embeddings = {cat: embed_model.encode(cat) for cat in categorias}
     
-    coherence_scores = []
-    explanations = []
+    keywords_por_categoria = {
+        "Alimentación": ["supermercado", "comida", "restaurante", "alimento"],
+        "Transporte": ["gasolina", "taxi", "autobús", "metro", "transporte"],
+        "Entretenimiento": ["cine", "netflix", "streaming", "videojuego", "ocio"],
+        "Servicios": ["luz", "agua", "internet", "teléfono", "factura"]
+    }
 
-    for idx in range(data.height):
-        row = data.row(idx, named=True)
-        categoria = row["categoria"]
-        descripcion = row["descripcion_gasto"]
+    results = []
+    for row in data.rows(named=True):
+        cat_actual, desc = row["categoria"], row["descripcion_gasto"]
         
-        if not categoria or not descripcion:
-            coherence_scores.append(0.0)
-            explanations.append("categoria_o_descripcion_vacia")
+        if not cat_actual or not desc:
+            results.append((0.0, False, "Incomplete data", ""))
             continue
         
-        # Calcular similitud semántica
-        if use_embeddings:
-            try:
-                # Codificar descripción y calcular similitud con la categoría
-                desc_embedding = model.encode(descripcion)
-                cat_embedding = category_embeddings[categoria]
+        try:
+            desc_embed = embed_model.encode(desc)
+            sim = cosine_similarity([desc_embed], [category_embeddings[cat_actual]])[0][0]
+            is_anomaly = sim < 0.05  
+            
+            msg = ""
+            if is_anomaly:
+                similitudes = {
+                    cat: cosine_similarity([desc_embed], [emb])[0][0]
+                    for cat, emb in category_embeddings.items()
+                }
+                mejor_cat = max(similitudes.items(), key=lambda x: x[1])[0]
                 
-                similarity = cosine_similarity([desc_embedding], [cat_embedding])[0][0]
-                explanation = f"Similitud de embeddings: {similarity:.4f}"
-            except Exception as e:
-                similarity = 0.0
-                explanation = f"Error en embeddings: {str(e)}"
-        else:
-            try:
-                desc_idx = corpus.index(descripcion)
-                cat_indices = [i for i, cat in enumerate(corpus_categories) if cat == categoria]
+                terminos_clave = []
+                for cat, keywords in keywords_por_categoria.items():
+                    if any(keyword in desc.lower() for keyword in keywords):
+                        terminos_clave.extend(keywords)
                 
-                # Calcular similitud promedio con todas las instancias de esta categoría i 
-                desc_vector = tfidf_matrix[desc_idx]
-                similarities = []
-                
-                for cat_idx in cat_indices:
-                    cat_vector = tfidf_matrix[cat_idx]
-                    sim = cosine_similarity(desc_vector, cat_vector)[0][0]
-                    similarities.append(sim)
-                
-                similarity = np.mean(similarities) if similarities else 0.0
-                explanation = f"Similitud TF-IDF: {similarity:.4f}"
-            except Exception as e:
-                similarity = 0.0
-                explanation = f"Error en TF-IDF: {str(e)}"
-        
-        coherence_scores.append(float(similarity))
-        explanations.append(explanation)
+                if terminos_clave:
+                    terminos_str = ", ".join(f"'{t}'" for t in set(terminos_clave))
+                    msg = (f"Possible error: The description contains terms ({terminos_str}) "
+                          f"that suggest the category '{mejor_cat}' rather '{cat_actual}'")
+                else:
+                    msg = (f"Possible error: The description does not match '{cat_actual}'. "
+                          f"Suggestion: consider '{mejor_cat}' (similarity: {similitudes[mejor_cat]:.2f})")
+            
+            results.append((float(sim), is_anomaly, f"Similarity: {sim:.2f}", msg))
+        except Exception as e:
+            results.append((0.0, False, f"Error: {str(e)}", ""))
     
-    data = data.with_columns([
-        pl.Series(name="coherencia_semantica", values=coherence_scores),
-        pl.Series(name="explicacion_semantica", values=explanations)
+    return data.with_columns([
+        pl.Series(name="coherencia_semantica", values=[r[0] for r in results]),
+        pl.Series(name="anomalia_semantica", values=[r[1] for r in results]),
+        pl.Series(name="explicacion_semantica", values=[r[2] for r in results]),
+        pl.Series(name="mensaje_personalizado", values=[r[3] for r in results])
     ])
-    
-    # Definir umbral adaptativo para anomalías semánticas
-    # Podemos usar un percentil bajo o un umbral fijo
-    umbral = 0.05  # umbral fijo para considerar algo como anomalía semántica
-    
-    data = data.with_columns([
-        (pl.col("coherencia_semantica") < umbral).alias("anomalia_semantica")
-    ])
-    
-    return data
 
 if __name__ == "__main__":
     
@@ -313,11 +274,9 @@ if __name__ == "__main__":
         final, categorias = crearNuevosDataSets(data)
         info = IsolationAnalisis(final)
         acabado = evaluarSemantica(info, categorias)
-
+        print(acabado)
 
         anomalias = acabado.filter((pl.col("anomalia_numerica") == 1) | (pl.col("anomalia_semantica") == True))
-        print(anomalias["explicacion_anomalia"])
-        exportarArchivos(Categorias(info.filter(pl.col("anomalia_numerica") == 1))) 
-
+        exportarArchivos(Categorias(anomalias))
     except Exception as e:
         print(f"Error: {str(e)}")
