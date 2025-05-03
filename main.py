@@ -1,4 +1,4 @@
-import polars as pl # type: ignore
+import polars as pl
 import datetime as dt
 import os
 from pathlib import Path
@@ -26,6 +26,13 @@ def ProcesamientoInicial(data):
             .replace(")", "")
             .replace("º", "n")) for col in data.columns]
     
+    for col in data.columns:
+        if data[col].dtype == pl.Utf8:
+            data = data.with_columns(
+                pl.col(col)
+                .map_elements(lambda x: unidecode(x.strip().lower()) if x is not None else x, return_dtype=pl.Utf8)
+                .alias(col))
+
     df = data.with_columns([
         pl.col("importe_orig.").cast(pl.Float64, strict=False),
         pl.col("importe_pagado").cast(pl.Float64, strict=False),
@@ -51,13 +58,17 @@ def limpiarDataSet(data):
 
     #Importes Negativos
     #Ingreso y gasto simultaneo
-    
+    df = df.filter(
+        ((pl.col("ingreso") > 0) & (pl.col("gasto") == 0.0)) |
+        ((pl.col("gasto") > 0) & (pl.col("ingreso") == 0.0)))
 
-    print (df)
+
+    return df
 
 def Categorias(data):
     #Caracterizacion
     dinero = data.select([pl.col("id_transaccion"), pl.col("ingreso"), pl.col("gasto"), pl.col("id_gasto")])
+    tiempoTransaccion = data.select(([pl.col("id_transaccion"), (pl.col("fin_transaccion_utc") - pl.col("hora_inicio_utc")).alias("tiempo_transaccion")]))
     tipoTransaccion = data.select([pl.col("id_transaccion"), pl.col("tipo"), pl.col("descripcion"), pl.col("descripcion_gasto")])
     categoria = data.select([pl.col("id_transaccion"), pl.col("categoria"), pl.col("codigo_categoria")])
     mismaDivisa = data.select([pl.col("id_transaccion"), (pl.col("divisa_original") == pl.col("moneda_de_pago")).alias("misma_divisa")])
@@ -67,7 +78,7 @@ def Categorias(data):
                           data.with_columns([pl.col("hora_inicio_utc").dt.strftime("%Y").alias("año")]).group_by("año").agg([pl.len().alias("n_transacciones")]).sort("año")
                         )
 
-    return (dinero, tipoTransaccion, categoria, mismaDivisa, infoPagador, frecuenciaTemporal)
+    return (dinero, tiempoTransaccion, tipoTransaccion, categoria, mismaDivisa, infoPagador, frecuenciaTemporal)
 
 def guardarEnCSV(path, tuple, nombreArchivo):
     dinero, tipoTransaccion, categoria, mismaDivisa, infoPagador, frecuenciaTemporal = tuple
@@ -91,8 +102,9 @@ def exportarArchivos(tuple):
 
 def crearNuevosDataSets(base):
     tipoCorrecto = ProcesamientoInicial(base)
-    limpiarDataSet(tipoCorrecto)
-    NuevaData = Categorias(tipoCorrecto)    
+    setLimpaido = limpiarDataSet(tipoCorrecto)
+    NuevaData = Categorias(setLimpaido)    
+    
     return NuevaData
 
 if __name__ == "__main__":
@@ -102,8 +114,6 @@ if __name__ == "__main__":
         data = pl.read_csv(path, try_parse_dates=True)
               
         final = crearNuevosDataSets(data)
-        
         #exportarArchivos(final)
-        
     except Exception as e:
         print(f"Error: {str(e)}")
