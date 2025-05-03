@@ -6,3 +6,5 @@ requests
 gunicorn
 dotenv
 dj-database-url
+web3
+
