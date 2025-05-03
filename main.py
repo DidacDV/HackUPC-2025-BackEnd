@@ -6,7 +6,11 @@ from unidecode import unidecode
 from sklearn.ensemble import IsolationForest
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics.pairwise import cosine_similarity
+from sklearn.linear_model import LinearRegression
+from datetime import datetime, timedelta
+import pandas as pd
 from sentence_transformers import SentenceTransformer
+import pyarrow
 import re
 
 def get_Path(filename, tipo) -> str:
@@ -203,7 +207,6 @@ def generate_anomaly_explanation(row):
     
     return explanation
 
-
 def evaluarSemantica(data: pl.DataFrame, categorias: list[str]) -> pl.DataFrame:
     try:
         embed_model = SentenceTransformer('paraphrase-MiniLM-L3-v2')  # Modelo ligero (33MB)
@@ -265,6 +268,100 @@ def evaluarSemantica(data: pl.DataFrame, categorias: list[str]) -> pl.DataFrame:
         pl.Series(name="mensaje_personalizado", values=[r[3] for r in results])
     ])
 
+
+def predecir30Dias(data):
+    df = data.clone()
+    
+    # Preparar los datos para el análisis
+    # Verificar el tipo de la columna fin_transaccion_utc
+    schema = df.schema
+    fin_transaccion_dtype = str(schema["fin_transaccion_utc"])
+    
+    # Convertir la columna de fecha a datetime solo si no es ya de tipo datetime
+    if "datetime" in fin_transaccion_dtype.lower():
+        # Si ya es datetime, simplemente renombrar para consistencia
+        df = df.with_columns([
+            pl.col("fin_transaccion_utc").alias("fecha"),
+        ])
+    else:
+        # Si no es datetime, convertir
+        df = df.with_columns([
+            pl.col("fin_transaccion_utc").str.strptime(pl.Datetime, "%Y-%m-%d %H:%M:%S", strict=False).alias("fecha"),
+        ])
+
+    # Extraer características de tiempo
+    df = df.with_columns([
+        pl.col("fecha").dt.day().alias("dia"),
+        pl.col("fecha").dt.month().alias("mes"),
+        pl.col("fecha").dt.weekday().alias("dia_semana"),
+        pl.col("fecha").dt.ordinal_day().alias("dia_año"),
+    ])
+
+    # Convertir el importe pagado a numérico
+    df = df.with_columns([
+        pl.col("importe_pagado").cast(pl.Float64, strict=False).alias("importe")
+    ])
+
+    # Preparar datos para la regresión lineal agrupados por día
+    daily_expenses = df.group_by(
+        pl.col("fecha").dt.date()
+    ).agg([
+        pl.sum("importe").alias("gasto_diario"),
+    ])
+
+    # Convertir a pandas para usar con sklearn
+    daily_expenses_pd = daily_expenses.to_pandas()
+    daily_expenses_pd = daily_expenses_pd.sort_values("fecha")
+
+    # Crear características para el modelo
+    daily_expenses_pd["dia"] = daily_expenses_pd["fecha"].dt.day
+    daily_expenses_pd["mes"] = daily_expenses_pd["fecha"].dt.month
+    daily_expenses_pd["dia_semana"] = daily_expenses_pd["fecha"].dt.weekday
+    daily_expenses_pd["dia_año"] = daily_expenses_pd["fecha"].dt.dayofyear
+
+    # Asignar días secuenciales para la tendencia
+    daily_expenses_pd["dia_secuencial"] = range(len(daily_expenses_pd))
+
+    # Entrenar modelo de regresión lineal
+    X = daily_expenses_pd[["dia", "mes", "dia_semana", "dia_año", "dia_secuencial"]]
+    y = daily_expenses_pd["gasto_diario"]
+
+    model = LinearRegression()
+    model.fit(X, y)
+
+    # Generar predicciones para los próximos 30 días
+    last_date = daily_expenses_pd["fecha"].max()
+    future_dates = [last_date + timedelta(days=i+1) for i in range(30)]
+
+    future_data = []
+    for date in future_dates:
+        future_data.append({
+            "fecha": date,
+            "dia": date.day,
+            "mes": date.month,
+            "dia_semana": date.weekday(),
+            "dia_año": date.timetuple().tm_yday,
+            "dia_secuencial": daily_expenses_pd["dia_secuencial"].max() + 1 + future_dates.index(date)
+        })
+
+    future_df = pl.DataFrame(future_data).to_pandas()
+    X_future = future_df[["dia", "mes", "dia_semana", "dia_año", "dia_secuencial"]]
+
+    # Hacer predicciones
+    predictions = model.predict(X_future)
+
+    # Asegurar que todas las predicciones sean positivas
+    predictions = np.maximum(predictions, 0)
+
+    # Crear dataframe con predicciones
+    predictions_df = pl.DataFrame({
+        "fecha": future_dates,
+        "gasto_predicho": predictions.round(2)
+    })
+
+    # Retornar el dataframe de predicciones
+    return predictions_df
+
 if __name__ == "__main__":
     
     try:
@@ -277,6 +374,10 @@ if __name__ == "__main__":
         print(acabado)
 
         anomalias = acabado.filter((pl.col("anomalia_numerica") == 1) | (pl.col("anomalia_semantica") == True))
+        sinAnomalias = final.join(anomalias, on="id_transaccion", how="anti")
+        
         exportarArchivos(Categorias(anomalias))
+        print(predecir30Dias(sinAnomalias))
+
     except Exception as e:
         print(f"Error: {str(e)}")

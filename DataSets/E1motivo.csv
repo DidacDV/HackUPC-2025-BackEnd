@@ -1,40 +1,40 @@
 id_transaccion,explicacion_anomalia
-txn6733837885,Normal transaction
-txn5900149149,Normal transaction
-txn3199978512,Normal transaction
-txn2781215744,Normal transaction
-txn6076517866,Normal transaction
-txn2791085173,Normal transaction
-txn6547930130,Normal transaction
-txn8528983977,Normal transaction
-txn8617035552,"POSSIBLE ANOMALY DETECTED (score:-0.09). Most likely reason: The amount of taxes is inconsistent with the rate applied. Details: Transaction with original amount 1128.65 and amount paid 172617.06. Commission: 1726.17, Tax rate: 0.1, Income: 0.0, Spent: 172617.06. Anomaly score: -0.09"
-txn6530445838,Normal transaction
-txn1060308648,"POSSIBLE ANOMALY DETECTED (score:-0.02). Most likely reason: Income or expenses with identical values ​​are recorded repeatedly. Details: Transaction with original amount 532.9 and amount paid 81502.35. Commission: 815.02, Tax rate: 0.1, Income: 0.0, Spent: 81502.35. Anomaly score: -0.02"
-txn3961235971,Normal transaction
-txn5459468200,"POSSIBLE ANOMALY DETECTED (score:-0.12). Most likely reason: Unusual transaction pattern compared to historical behavior. Details: Transaction with original amount 1172.86 and amount paid 179378.59. Commission: 1793.79, Tax rate: 0.1, Income: 0.0, Spent: 179378.59. Anomaly score: -0.12"
-txn5697438006,Normal transaction
-txn6591631324,Normal transaction
 txn1939623321,"POSSIBLE ANOMALY DETECTED (score:-0.06). Most likely reason: The commission is unusually high for this type of transaction.. Details: Transaction with original amount 1197.83 and amount paid 141561.73. Commission: 1415.62, Tax rate: 0.1, Income: 0.0, Spent: 141561.73. Anomaly score: -0.06"
-txn7274651120,Normal transaction
-txn9516873817,"POSSIBLE ANOMALY DETECTED (score:-0.02). Most likely reason: The commission is unusually high for this type of transaction.. Details: Transaction with original amount 435.89 and amount paid 51514.27. Commission: 515.14, Tax rate: 0.1, Income: 0.0, Spent: 51514.27. Anomaly score: -0.02"
-txn4241060792,Normal transaction
-txn7520418755,Normal transaction
-txn5367880897,Normal transaction
-txn3553688457,"POSSIBLE ANOMALY DETECTED (score:-0.02). Most likely reason: The commission is unusually high for this type of transaction.. Details: Transaction with original amount 995.2 and amount paid 129376.0. Commission: 1293.76, Tax rate: 0.1, Income: 0.0, Spent: 129376.0. Anomaly score: -0.02"
-txn5466682991,Normal transaction
-txn5788443644,Normal transaction
-txn7629596201,Normal transaction
+txn8617035552,"POSSIBLE ANOMALY DETECTED (score:-0.09). Most likely reason: The amount of taxes is inconsistent with the rate applied. Details: Transaction with original amount 1128.65 and amount paid 172617.06. Commission: 1726.17, Tax rate: 0.1, Income: 0.0, Spent: 172617.06. Anomaly score: -0.09"
 txn6360370463,"POSSIBLE ANOMALY DETECTED (score:-0.01). Most likely reason: The commission is unusually high for this type of transaction.. Details: Transaction with original amount 359.74 and amount paid 55019.06. Commission: 550.19, Tax rate: 0.1, Income: 0.0, Spent: 55019.06. Anomaly score: -0.01"
-txn7429941741,"POSSIBLE ANOMALY DETECTED (score:-0.01). Most likely reason: A sudden and significant increase or decrease in the average transaction value. Details: Transaction with original amount 903.67 and amount paid 106797.36. Commission: 1067.97, Tax rate: 0.1, Income: 0.0, Spent: 106797.36. Anomaly score: -0.01"
-txn7165170521,Normal transaction
-txn2223906076,"POSSIBLE ANOMALY DETECTED (score:-0.04). Most likely reason: The commission is unusually high for this type of transaction.. Details: Transaction with original amount 906.44 and amount paid 138632.0. Commission: 1386.32, Tax rate: 0.1, Income: 0.0, Spent: 138632.0. Anomaly score: -0.04"
-txn3020487407,Normal transaction
-txn4485918757,"POSSIBLE ANOMALY DETECTED (score:-0.06). Most likely reason: The commission is unusually high for this type of transaction.. Details: Transaction with original amount 1005.92 and amount paid 153846.59. Commission: 1538.47, Tax rate: 0.1, Income: 0.0, Spent: 153846.59. Anomaly score: -0.06"
-txn9687785011,Normal transaction
-txn8504635043,Normal transaction
-txn8728111668,Normal transaction
-txn6713153566,Normal transaction
 txn1200917231,Normal transaction
-txn2617130936,Normal transaction
+txn2791085173,Normal transaction
+txn6591631324,Normal transaction
+txn3020487407,Normal transaction
+txn7429941741,"POSSIBLE ANOMALY DETECTED (score:-0.01). Most likely reason: A sudden and significant increase or decrease in the average transaction value. Details: Transaction with original amount 903.67 and amount paid 106797.36. Commission: 1067.97, Tax rate: 0.1, Income: 0.0, Spent: 106797.36. Anomaly score: -0.01"
+txn5900149149,Normal transaction
+txn6076517866,Normal transaction
+txn7520418755,Normal transaction
+txn7629596201,Normal transaction
+txn8504635043,Normal transaction
+txn9516873817,"POSSIBLE ANOMALY DETECTED (score:-0.02). Most likely reason: The commission is unusually high for this type of transaction.. Details: Transaction with original amount 435.89 and amount paid 51514.27. Commission: 515.14, Tax rate: 0.1, Income: 0.0, Spent: 51514.27. Anomaly score: -0.02"
+txn5697438006,Normal transaction
 txn2867639416,Normal transaction
+txn8728111668,Normal transaction
+txn9687785011,Normal transaction
+txn7274651120,Normal transaction
+txn5459468200,"POSSIBLE ANOMALY DETECTED (score:-0.12). Most likely reason: Unusual transaction pattern compared to historical behavior. Details: Transaction with original amount 1172.86 and amount paid 179378.59. Commission: 1793.79, Tax rate: 0.1, Income: 0.0, Spent: 179378.59. Anomaly score: -0.12"
+txn5466682991,Normal transaction
+txn6733837885,Normal transaction
+txn2223906076,"POSSIBLE ANOMALY DETECTED (score:-0.04). Most likely reason: The commission is unusually high for this type of transaction.. Details: Transaction with original amount 906.44 and amount paid 138632.0. Commission: 1386.32, Tax rate: 0.1, Income: 0.0, Spent: 138632.0. Anomaly score: -0.04"
+txn6713153566,Normal transaction
+txn4241060792,Normal transaction
+txn6547930130,Normal transaction
+txn1060308648,"POSSIBLE ANOMALY DETECTED (score:-0.02). Most likely reason: Income or expenses with identical values ​​are recorded repeatedly. Details: Transaction with original amount 532.9 and amount paid 81502.35. Commission: 815.02, Tax rate: 0.1, Income: 0.0, Spent: 81502.35. Anomaly score: -0.02"
+txn2617130936,Normal transaction
+txn2781215744,Normal transaction
+txn7165170521,Normal transaction
+txn5367880897,Normal transaction
+txn3199978512,Normal transaction
+txn3961235971,Normal transaction
+txn5788443644,Normal transaction
+txn3553688457,"POSSIBLE ANOMALY DETECTED (score:-0.02). Most likely reason: The commission is unusually high for this type of transaction.. Details: Transaction with original amount 995.2 and amount paid 129376.0. Commission: 1293.76, Tax rate: 0.1, Income: 0.0, Spent: 129376.0. Anomaly score: -0.02"
+txn6530445838,Normal transaction
 txn6756460408,Normal transaction
+txn4485918757,"POSSIBLE ANOMALY DETECTED (score:-0.06). Most likely reason: The commission is unusually high for this type of transaction.. Details: Transaction with original amount 1005.92 and amount paid 153846.59. Commission: 1538.47, Tax rate: 0.1, Income: 0.0, Spent: 153846.59. Anomaly score: -0.06"
+txn8528983977,Normal transaction
