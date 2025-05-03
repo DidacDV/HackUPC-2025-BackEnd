@@ -83,11 +83,11 @@ def Categorias(data):
                           data.with_columns([pl.col("hora_inicio_utc").dt.strftime("%Y-%m").alias("mes")]).group_by("mes").agg([pl.len().alias("n_transacciones")]).sort("mes"),
                           data.with_columns([pl.col("hora_inicio_utc").dt.strftime("%Y").alias("año")]).group_by("año").agg([pl.len().alias("n_transacciones")]).sort("año")
                         )
-
-    return (dinero, tiempoTransaccion, tipoTransaccion, categoria, mismaDivisa, infoPagador, frecuenciaTemporal)
+    motivo = (data.select([pl.col("id_transaccion"), pl.col("explicacion_anomalia")]))
+    return (dinero, tipoTransaccion, categoria, mismaDivisa, infoPagador, frecuenciaTemporal, motivo)
 
 def guardarEnCSV(path, tuple, nombreArchivo):
-    dinero, tipoTransaccion, categoria, mismaDivisa, infoPagador, frecuenciaTemporal = tuple
+    dinero, tipoTransaccion, categoria, mismaDivisa, infoPagador, frecuenciaTemporal, motivo = tuple
 
     os.makedirs(path, exist_ok=True)
 
@@ -100,6 +100,7 @@ def guardarEnCSV(path, tuple, nombreArchivo):
     frecuenciaTemporal[0].write_csv(f"{path}/{nombreArchivo}frecuencia_dia.csv")
     frecuenciaTemporal[1].write_csv(f"{path}/{nombreArchivo}frecuencia_mes.csv")
     frecuenciaTemporal[2].write_csv(f"{path}/{nombreArchivo}frecuencia_year.csv")
+    motivo.write_csv(f"{path}/{nombreArchivo}motivo.csv")
 
 def exportarArchivos(tuple):
     current_dir = Path(__file__).parent
@@ -109,9 +110,7 @@ def exportarArchivos(tuple):
 def crearNuevosDataSets(base):
     tipoCorrecto = ProcesamientoInicial(base)
     setLimpaido = limpiarDataSet(tipoCorrecto)
-    categorias = set(setLimpaido["categoria"].unique().to_list())
-    #NuevaData = Categorias(setLimpaido)    
-    
+    categorias = set(setLimpaido["categoria"].unique().to_list())    
     
     #esto tiene que devolver NuevaData despues de los analisis 
     return setLimpaido, categorias
@@ -140,13 +139,73 @@ def IsolationAnalisis(data):
         pl.Series(name="score_anomalia", values=anomaly_scores)
     ])
 
+    df = df.with_columns(
+        pl.struct(["anomalia_numerica", "score_anomalia"] + columnas)
+        .map_elements(lambda x: generate_anomaly_explanation(x))
+        .alias("explicacion_anomalia")
+    )
+
     return df
+
+def generate_anomaly_explanation(row):
+    if row["anomalia_numerica"] == 0:
+        return "Transacción normal"
+    
+    # Cargar modelo de lenguaje (puedes usar uno más pequeño si es necesario)
+    model = SentenceTransformer('paraphrase-MiniLM-L6-v2')
+    
+    # Crear un texto descriptivo de la transacción
+    transaction_details = (
+        f"Transacción con importe original {row['importe_orig.']} y importe pagado {row['importe_pagado']}. "
+        f"Comisión: {row['comision']}, Tasa impuestos: {row['tasa_impuestos']}, "
+        f"Ingreso: {row['ingreso']}, Gasto: {row['gasto']}. "
+        f"Score de anomalía: {row['score_anomalia']:.2f}"
+    )
+    
+    # Generar un embedding del texto
+    embedding = model.encode(transaction_details)
+    
+    # Definir posibles razones de anomalías (podrías expandir esto)
+    common_reasons = [
+        "El importe pagado es significativamente diferente al importe original",
+        "La comisión es inusualmente alta para este tipo de transacción",
+        "La tasa de impuestos no coincide con los valores esperados",
+        "La relación entre ingreso y gasto es atípica",
+        "La duración de la transacción es anómala",
+        "Patrón de transacción inusual en comparación con el comportamiento histórico",
+        "El descuento aplicado es inesperadamente alto o bajo",
+        "La comisión varía drásticamente sin una explicación lógica",
+        "El importe de los impuestos es inconsistente con la tasa aplicada",
+        "Se observa un redondeo inusual en los importes o comisiones",
+        "Un ingreso o gasto es registrado fuera del rango esperado para la hora o fecha",
+        "La proporción de gasto en una transacción específica es excesivamente alta o baja en comparación con el ingreso generado",
+        "Se registran ingresos o gastos con valores idénticos de forma repetida",
+        "Transacciones con importes similares presentan duraciones extremadamente diferentes",
+        "La duración de la transacción es inusualmente corta o larga para el tipo de producto o servicio",
+        "Un aumento o disminución repentino y significativo en el valor promedio de las transacciones",
+        "Una frecuencia inusual de transacciones con valores específicos (picos o valles inesperados)",
+        "Cambios drásticos en la distribución de los valores de las columnas numéricas"
+    ]
+    
+    # Encontrar la razón más similar
+    reason_embeddings = model.encode(common_reasons)
+    similarities = cosine_similarity([embedding], reason_embeddings)
+    best_match_idx = np.argmax(similarities)
+    best_match = common_reasons[best_match_idx]
+    
+    # Construir el mensaje final
+    explanation = (
+        f"POSIBLE ANOMALÍA DETECTADA (score: {row['score_anomalia']:.2f}). "
+        f"Razón más probable: {best_match}. "
+        f"Detalles: {transaction_details}"
+    )
+    
+    return explanation
 
 def evaluarSemantica(data, categorias):
     use_embeddings = False
     
     try:
-        # Intentar usar un modelo de embeddings ligero
         model = SentenceTransformer('paraphrase-multilingual-MiniLM-L12-v2')
         # Alternativas ligeras:
         # - 'paraphrase-MiniLM-L3-v2' - muy ligero (33MB)
@@ -158,7 +217,6 @@ def evaluarSemantica(data, categorias):
         print(f"No se pudo cargar modelo de embeddings: {e}")
         print("Usando TF-IDF como alternativa...")
         
-        # Crear vectorizador TF-IDF como fallback
         vectorizer = TfidfVectorizer(
             ngram_range=(1, 2),
             max_features=5000,
@@ -254,10 +312,12 @@ if __name__ == "__main__":
 
         final, categorias = crearNuevosDataSets(data)
         info = IsolationAnalisis(final)
-        print(categorias)
-        #acabado = evaluarSemantica(final, categorias)
-        #print(acabado.filter(pl.col("anomalia_semantica") == True))
-        #print(info.filter(pl.col("anomalia_numerica") == 1))
-        #exportarArchivos(final)
+        acabado = evaluarSemantica(info, categorias)
+
+
+        anomalias = acabado.filter((pl.col("anomalia_numerica") == 1) | (pl.col("anomalia_semantica") == True))
+        print(anomalias["explicacion_anomalia"])
+        exportarArchivos(Categorias(info.filter(pl.col("anomalia_numerica") == 1))) 
+
     except Exception as e:
         print(f"Error: {str(e)}")
